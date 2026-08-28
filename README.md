@@ -48,6 +48,7 @@ Análise feita lendo o código dos 3 projetos antes de escrever a skill, para en
 | CRITICAL | `GET /api/admin/financial-report` sem autenticação expõe receita por curso e dados pessoais de alunos (`AppManager.js:80-129`) | Vazamento de dados financeiros e PII para qualquer requisição não autenticada. |
 | HIGH | Estado global mutável — `globalCache`/`totalRevenue` no escopo do módulo (`src/utils.js:9-10`), mutado a cada checkout | Estado compartilhado entre requisições concorrentes gera comportamento não determinístico. |
 | MEDIUM | Pirâmide de callbacks com N+1 aninhado em 3 níveis no relatório financeiro (`AppManager.js:83-127`), com contadores manuais de "pending" | Frágil e difícil de manter; degrada com o volume de dados. |
+| MEDIUM | `DELETE /api/users/:id` não cascateia `enrollments`/`payments` — o próprio texto de resposta original admitia "ficaram sujos no banco" (`AppManager.js:131-137`) | Dados órfãos se acumulam referenciando um usuário que não existe mais; relatórios futuros podem quebrar ou mentir. |
 | LOW | Nomenclatura de variável de uma letra no checkout (`u`, `e`, `p`, `cid`, `cc` — `AppManager.js:29-33`) | Reduz legibilidade e aumenta risco de troca acidental de variável. |
 | LOW | `totalRevenue` declarado/exportado mas nunca usado em lugar nenhum (`src/utils.js:10,25`) | Código morto — sugere integração abandonada pela metade. |
 
