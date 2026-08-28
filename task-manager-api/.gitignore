@@ -1,5 +1,6 @@
 .env
 tasks.db
+instance/
 __pycache__/
 *.pyc
 .venv/
