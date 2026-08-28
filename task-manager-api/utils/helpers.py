@@ -1,10 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import re
-import os
-import json
-import sys
-import math
-import hashlib
+
+
+def utcnow():
+    """Naive UTC now — drop-in replacement for the deprecated datetime.utcnow(),
+    kept naive on purpose so it stays comparable to the naive due_date values
+    parsed elsewhere in the app (datetime.strptime(..., '%Y-%m-%d'))."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 
 def format_date(date_obj):
     if date_obj:
@@ -34,11 +37,13 @@ def generate_id():
     return str(uuid.uuid4())
 
 def log_action(action, details=None):
+    import logging
 
-    timestamp = datetime.utcnow()
-    print(f"[{timestamp}] ACTION: {action}")
+    logger = logging.getLogger("task-manager-api")
     if details:
-        print(f"  DETAILS: {details}")
+        logger.info("ACTION: %s | DETAILS: %s", action, details)
+    else:
+        logger.info("ACTION: %s", action)
 
 def parse_date(date_string):
     try:
@@ -72,8 +77,7 @@ def process_task_data(data, existing_task=None):
         result['description'] = data['description']
 
     if 'status' in data:
-        valid_statuses = ['pending', 'in_progress', 'done', 'cancelled']
-        if data['status'] in valid_statuses:
+        if data['status'] in VALID_STATUSES:
             result['status'] = data['status']
         else:
             return None, 'Status inválido'
