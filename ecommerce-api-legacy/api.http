@@ -1,6 +1,7 @@
 @baseUrl = http://localhost:3000
+@adminToken = change-me-in-production
 
-### Checkout - sucesso
+### Checkout - sucesso (cartao comecando com 4 = aprovado)
 POST {{baseUrl}}/api/checkout
 Content-Type: application/json
 
@@ -12,20 +13,28 @@ Content-Type: application/json
   "card": "4111222233334444"
 }
 
-### Checkout - pagamento recusado
+### Checkout - pagamento recusado (cartao nao comeca com 4)
 POST {{baseUrl}}/api/checkout
 Content-Type: application/json
 
 {
-  "usr": "João",
+  "usr": "Joao",
   "eml": "joao@teste.com",
   "pwd": "123",
   "c_id": 1,
   "card": "5111222233334444"
 }
 
-### Relatório financeiro administrativo
+### Relatorio financeiro administrativo (requer X-Admin-Token)
+GET {{baseUrl}}/api/admin/financial-report
+X-Admin-Token: {{adminToken}}
+
+### Relatorio financeiro SEM token (deve retornar 401)
 GET {{baseUrl}}/api/admin/financial-report
 
-### Deletar usuário
+### Deletar usuario (requer X-Admin-Token, cascateia enrollments e payments)
+DELETE {{baseUrl}}/api/users/1
+X-Admin-Token: {{adminToken}}
+
+### Deletar usuario SEM token (deve retornar 401)
 DELETE {{baseUrl}}/api/users/1
