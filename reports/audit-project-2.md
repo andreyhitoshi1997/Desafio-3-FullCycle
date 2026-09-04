@@ -69,6 +69,7 @@ File: src/AppManager.js:46
 Description: A decisão de aprovar ou negar o pagamento é `cc.startsWith("4")` — nenhuma integração real com gateway de pagamento, a "regra de negócio" mais crítica do fluxo é uma checagem de prefixo de cartão hardcoded na rota.
 Impact: Qualquer cartão começando com "4" é aprovado, sem validação real; lógica de pagamento não é testável nem substituível.
 Recommendation: Extrair para um serviço de pagamento isolado (ainda que mock/simulado), nunca embutido na rota.
+Update (revisão pós-Fase 3): a primeira passagem da Fase 3 apenas moveu `cc.startsWith("4")` para `src/services/paymentService.js`, sem corrigir a regra nem usar o `gatewayKey` recebido — finding reaberto por revisão humana e corrigido de fato (ver `src/services/payment/`: `cardValidator.js` + `simulatedGateway.js` + `paymentService.js`, com validação de formato/Luhn e `gatewayKey` participando da decisão). Playbook atualizado com o padrão #13 para evitar repetir esse erro.
 
 [HIGH] Acoplamento forte / sem injeção de dependência
 File: src/AppManager.js:4-8

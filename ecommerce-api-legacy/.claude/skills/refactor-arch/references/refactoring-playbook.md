@@ -266,6 +266,64 @@ Controllers deixam de precisar de `try/except` genérico repetido.
 
 ---
 
+## 13. Decisão de negócio crítica simulada por placeholder → Validação simulada explícita
+
+**Sintoma**: uma decisão de negócio sensível (aprovação de pagamento, autorização, permissão) é resolvida por uma checagem trivial e hardcoded — um prefixo de string, um valor fixo, um `Math.random()` — sem nenhuma validação real nem integração com o sistema que deveria decidir isso. Isso é fácil de confundir com "só precisa mover para um service", mas mover o código para outro arquivo **sem trocar a regra** não corrige o finding: o mesmo comportamento ingênuo continua lá, só que isolado.
+
+**Antes** (Node — a regra "ingênua" está embutida na rota)
+```javascript
+app.post('/api/checkout', (req, res) => {
+  const approved = cc.startsWith("4"); // "regra de negócio" real do checkout
+  const status = approved ? "PAID" : "DENIED";
+  // ...
+});
+```
+
+**Ainda errado** (só isolar sem corrigir — não fecha o finding)
+```javascript
+// services/paymentService.js
+function processPayment(cardNumber, gatewayKey) {
+  return cardNumber.startsWith("4") ? "PAID" : "DENIED"; // mesma regra, novo arquivo; gatewayKey nunca usado
+}
+```
+
+**Depois** (validação simulada honesta, mas real o suficiente para ser testável e substituível)
+```javascript
+// services/payment/cardValidator.js — função pura, sem I/O
+function validate(cardNumber) {
+  const normalized = String(cardNumber).replace(/[\s-]/g, "");
+  if (!/^\d{13,19}$/.test(normalized)) return { valid: false, reason: "invalid_format" };
+  if (!isLuhnValid(normalized)) return { valid: false, reason: "invalid_card" };
+  return { valid: true, reason: null, last4: normalized.slice(-4) };
+}
+
+// services/payment/simulatedGateway.js — adapter nomeado explicitamente como simulação
+function createSimulatedGateway({ gatewayKey }) {
+  return {
+    authorize({ cardNumber }) {
+      if (!gatewayKey) return { status: "DENIED", reason: "gateway_unconfigured" };
+      const card = cardValidator.validate(cardNumber);
+      if (!card.valid) return { status: "DENIED", reason: card.reason };
+      return { status: "PAID", reason: "approved" };
+    },
+  };
+}
+
+// services/payment/paymentService.js — porta; troca por gateway real não toca o controller
+function createPaymentService({ gateway }) {
+  return { processPayment: (input) => gateway.authorize(input) };
+}
+```
+
+Regras da transformação:
+- A regra de decisão vira uma função pura e testável (ex.: algoritmo de Luhn para formato de cartão), não apenas um `startsWith`/valor mágico.
+- Todo parâmetro recebido (ex.: `gatewayKey`) participa de fato da decisão ou do log — nunca fica morto na assinatura.
+- O nome do módulo deixa explícito que é simulação (`simulatedGateway`, não `paymentGateway`), para não confundir um leitor futuro achando que é integração real.
+- A porta (`paymentService`) não muda quando o adapter muda — é o ponto de extensão para um gateway real depois.
+- Nunca deixe a função lançar exceção não tratada: erro inesperado deve virar uma negação segura (`DENIED/internal_error`), não quebrar o fluxo que a chama.
+
+---
+
 ## Como usar este playbook na Fase 3
 
 Para cada finding do relatório da Fase 2, localize o padrão correspondente aqui (o campo `Recommendation` do finding referencia o padrão), aplique a transformação adaptando nomes/entidades ao projeto real, e confirme visualmente que o comportamento do endpoint não mudou antes de seguir para o próximo finding.

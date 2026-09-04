@@ -6,9 +6,9 @@ const userModel = require("../models/userModel");
 const enrollmentModel = require("../models/enrollmentModel");
 const paymentModel = require("../models/paymentModel");
 const auditLogModel = require("../models/auditLogModel");
-const paymentService = require("../services/paymentService");
+const { PAYMENT_STATUS } = require("../services/payment/paymentService");
 
-function buildCheckoutHandler(db) {
+function buildCheckoutHandler(db, paymentService) {
   return async function checkout(req, res, next) {
     try {
       const { userName, email, password, courseId, cardNumber } = parseCheckoutBody(req.body);
@@ -22,8 +22,14 @@ function buildCheckoutHandler(db) {
 
       const userId = await findOrCreateUser(db, userName, email, password);
 
-      const paymentStatus = paymentService.processPayment(cardNumber, config.paymentGatewayKey);
-      if (paymentStatus === "DENIED") return res.status(400).send("Pagamento recusado");
+      const { status: paymentStatus, reason: paymentReason } = await paymentService.processPayment({
+        cardNumber,
+        amount: course.price,
+      });
+      if (paymentStatus === PAYMENT_STATUS.DENIED) {
+        logger.info("Payment denied", { courseId, reason: paymentReason });
+        return res.status(400).send("Pagamento recusado");
+      }
 
       const { lastID: enrollmentId } = await enrollmentModel.create(db, userId, courseId);
       await paymentModel.create(db, enrollmentId, course.price, paymentStatus);

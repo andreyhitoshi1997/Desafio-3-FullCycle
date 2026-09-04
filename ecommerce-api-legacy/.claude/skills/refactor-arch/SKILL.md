@@ -74,10 +74,10 @@ Phase 2 complete. Proceed with refactoring (Phase 3)? [y/n]
 Objetivo: eliminar os findings da Fase 2, reestruturando o projeto para MVC, sem quebrar o comportamento observável.
 
 1. Siga `references/architecture-guidelines.md` para decidir a estrutura de diretórios alvo (Models / Views-Routes / Controllers / Config / Middlewares / entry point), adaptando ao que já existe no projeto — se o projeto já tem `models/`, `routes/`, etc., **mova e corrija o que já existe** em vez de recriar do zero.
-2. Para cada finding da Fase 2, aplique a transformação correspondente descrita em `references/refactoring-playbook.md` (com exemplos de antes/depois). Nenhum finding CRITICAL ou HIGH deve sobrar sem correção.
+2. Para cada finding da Fase 2, aplique a transformação correspondente descrita em `references/refactoring-playbook.md` (com exemplos de antes/depois). Nenhum finding CRITICAL ou HIGH deve sobrar sem correção. **Apenas mover ou renomear o código para outro arquivo, preservando exatamente a mesma lógica que o próprio finding apontou como falha (ex.: uma checagem hardcoded decidindo aprovação de pagamento), não conta como correção** — isso reprova o finding mesmo que o código agora esteja "isolado" em um service/model. Corrija o comportamento; só depois, se fizer sentido, isole-o.
 3. Garanta que toda configuração sensível (secrets, chaves, credenciais de banco/SMTP/pagamento) saia do código-fonte e passe a vir de variáveis de ambiente, com um `.env.example` documentando as chaves esperadas (sem valores reais).
 4. Centralize o tratamento de erros (middleware/handler único), não `try/except`/`try/catch` espalhados retornando formatos inconsistentes.
-5. Preserve o comportamento observável: os mesmos endpoints, com os mesmos métodos HTTP e paths, devem continuar respondendo. Não remova funcionalidade.
+5. Preserve o comportamento observável: os mesmos endpoints, com os mesmos métodos HTTP, paths e contratos de resposta (status codes, formato do payload), devem continuar respondendo. Não remova funcionalidade. Isso se refere ao **contrato externo** do endpoint — não à lógica interna que a própria Fase 2 marcou como CRITICAL/HIGH. Uma regra de negócio ingênua ou insegura apontada na auditoria deve ser substituída por uma implementação correta (ainda que simulada/mock, ver playbook #13), e não preservada "para não mudar o comportamento".
 6. **Valide o resultado**:
    - Instale dependências se necessário.
    - Suba a aplicação (boot) e confirme que inicia sem erro.
